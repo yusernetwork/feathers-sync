@@ -15,6 +15,7 @@ When running multiple instances of your Feathers application (e.g. on several He
 
 feathers-sync uses a messaging mechanism to propagate all events to all application instances. It currently supports:
 
+- MongoDB publish/subscribe (via [mubsub](https://github.com/scttnlsn/mubsub))
 - Redis via [redis](https://github.com/NodeRedis/node_redis)
 - AMQP (RabbitMQ) via [amqplib](https://github.com/squaremo/amqp.node)
 
@@ -31,7 +32,8 @@ const sync = require('feathers-sync');
 const app = feathers();
 
 app.configure(sync({
-  uri: 'redis://localhost:6379'
+  uri: 'mongodb://localhost:27017/sync',
+  collection: 'events'
 }));
 app.use('/todos', todoService);
 ```
@@ -42,7 +44,7 @@ app.use('/todos', todoService);
 
 When set up, `app.sync` will contain the following information:
 
-- `type` - The adapter type (e.g. `redis` or `amqp`)
+- `type` - The adapter type (e.g. `mongodb` or `redis`)
 - `ready` - A promise that resolves when the synchronization mechanism is ready
 
 ```js
@@ -74,9 +76,21 @@ app.service('messages').hooks({
 
 ## Adapters
 
-`feathers-sync` can be initialized either by specifying the type of adapter through the `uri` (e.g. `redis://localhost:6379`) or using e.g. `sync.redis` directly:
+`feathers-sync` can be initialized either by specifying the type of adapter through the `uri` (e.g. `mongodb://localhost:27017/sync`) or using e.g. `sync.mongodb` directly:
 
 ```js
+// Configure MongoDB
+app.configure(sync({
+  uri: 'mongodb://localhost:27017/sync',
+  collection: 'events'
+}));
+
+// Configure MongoDB with an existing connection
+app.configure(sync.mongodb({
+  db: existingConnection
+  collection: 'events'
+}));
+
 // Configure Redis
 app.configure(sync({
   uri: 'redis://localhost:6379'
@@ -91,6 +105,18 @@ app.configure(sync.redis({
   redisClient: redisClient 
 }))
 ```
+
+### MongoDB
+
+- `uri` - The connection string (must start with `mongodb://`)
+- `db` - The MongoDB database object or connection string (alias for `uri`)
+- `collection` (default: `events`) - The name of the capped event collection
+- `mubsub` - Settings to be passed to [mubsub](https://github.com/scttnlsn/mubsub) (e.g. `{authSource:'admin'}`)
+- `channel` - Mubsub channel synchronization options:
+  - `size` (default: `5mb`) - Max size of the collection in bytes
+  - `max` - Max amount of documents in the collection
+  - `retryInterval` (default: `200ms`) - Time in ms to wait if no docs are found
+  - `recreate` (default: `true`) - Recreate the tailable cursor when an error occurs (default is `true`)
 
 ### Redis
 
@@ -137,7 +163,7 @@ app.configure(sync({
 }));
 ```
 
-> `Redis` and `AMQP` can support binary serialization / deserialization (i.e. `Buffer` data).
+> `Redis` and `AMQP` can support binary serialization / deserialization (i.e. `Buffer` data) but not `MongoDB`.
 
 ## Writing custom adapters
 
@@ -189,6 +215,6 @@ The `data` for the `sync-in` event should be in the same form as the one that is
 
 ## License
 
-Copyright (c) 2019 Feathers contributors
+Copyright (c) 2018 Feathers contributors
 
 Licensed under the [MIT license](LICENSE).

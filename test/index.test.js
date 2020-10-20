@@ -5,6 +5,7 @@ const sync = require('../lib');
 describe('feathers-sync tests', () => {
   it('exports db adapters', () => {
     assert.strictEqual(typeof sync, 'function');
+    assert.ok(sync.mongodb);
     assert.ok(sync.redis);
     assert.ok(sync.amqp);
   });
